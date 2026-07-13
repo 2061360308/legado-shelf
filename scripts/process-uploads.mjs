@@ -104,6 +104,8 @@ async function writeIndex(books, sha) {
 
 /* ── ZIP 处理 ───────────────────────────────── */
 
+const SHORT_HASH_LEN = 12
+
 function keyInfo(key) {
   const base = key.replace(UPLOAD_PREFIX, '').replace(/\.zip$/, '')
   const idx = base.indexOf('_')
@@ -114,7 +116,7 @@ function keyInfo(key) {
 
 async function processZip(key) {
   const { hash, title } = keyInfo(key)
-  const tag0 = `v${hash}-part-0`
+  const tag0 = `v${hash}0`
 
   if (await releaseExists(tag0)) {
     console.log(`  ⏭ ${key} → release 已存在`)
@@ -138,9 +140,11 @@ async function processZip(key) {
 
   const parts = new Map()
   for (const e of toc) {
-    const p = parseInt(e.k.match(/^\d+/)[0], 10)
+    const k = e.k
+    const chHash = k.substring(k.length - SHORT_HASH_LEN)
+    const p = parseInt(k.substring(0, k.length - SHORT_HASH_LEN), 10) || 0
     if (!parts.has(p)) parts.set(p, [])
-    parts.get(p).push(e)
+    parts.get(p).push({ ...e, chHash })
   }
   const partIndices = [...parts.keys()].sort((a, b) => a - b)
   if (partIndices.length === 0) partIndices.push(0)
@@ -148,7 +152,7 @@ async function processZip(key) {
   let firstTag = tag0
 
   for (const p of partIndices) {
-    const tag = `v${hash}-part-${p}`
+    const tag = `v${hash}${p}`
     if (p === 0) firstTag = tag
 
     const body = [
@@ -173,8 +177,7 @@ async function processZip(key) {
     }
 
     for (const e of entries) {
-      const chHash = e.k.replace(/^\d+/, '')
-      const file = zip.file(`chapters/${chHash}.txt`) || zip.file(`chapters/${chHash}.md`)
+      const file = zip.file(`chapters/${e.chHash}.txt`) || zip.file(`chapters/${e.chHash}.md`)
       if (file) {
         await uploadAsset(release.upload_url, `${e.k}.txt`, await file.async('nodebuffer'), 'text/plain; charset=utf-8')
         count++

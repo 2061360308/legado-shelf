@@ -69,7 +69,7 @@ export async function listReleaseTags(
   owner: string, repo: string, hash: string, token: string,
 ): Promise<string[]> {
   const octo = client(token)
-  const prefix = `v${hash}-part-`
+  const prefix = `v${hash}`
   const tags: string[] = []
   try {
     const releases = await octo.paginate(octo.rest.repos.listReleases, { owner, repo, per_page: 100 })

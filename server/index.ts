@@ -120,7 +120,7 @@ async function handleNovelCheck(env: Env, request: Request, path: string) {
   if (!HASH_REGEX.test(hash)) return err('INVALID_REQUEST', null, 400);
   const { CONTENT_OWNER, CONTENT_REPO, GITHUB_TOKEN } = env;
   if (!CONTENT_OWNER || !CONTENT_REPO || !GITHUB_TOKEN) return err('GITHUB_ERROR', null, 500);
-  const tag = `v${hash}-part-0`;
+  const tag = `v${hash}0`;
   const release = await checkReleaseExists(CONTENT_OWNER, CONTENT_REPO, tag, GITHUB_TOKEN);
   if (!release) return json({ exists: false });
   const tags = await listReleaseTags(CONTENT_OWNER, CONTENT_REPO, hash, GITHUB_TOKEN);

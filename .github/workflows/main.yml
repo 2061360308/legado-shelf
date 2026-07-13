@@ -34,7 +34,7 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
           CONTENT_OWNER: ${{ secrets.CONTENT_OWNER }}
           CONTENT_REPO: ${{ secrets.CONTENT_REPO }}
           INPUT_HASH: ${{ inputs.hash }}

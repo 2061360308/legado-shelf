@@ -24,16 +24,6 @@ const BookEntrySchema = {
   },
 }
 
-const NovelCheckSchema = {
-  type: 'object' as const,
-  properties: {
-    exists: { type: 'boolean', description: '是否已发布' },
-    guri: { type: 'string', description: 'URN', example: 'urn:novel:sha256:a1b2c3d4e5f6' },
-    tags: { type: 'array', items: { type: 'string' }, description: '所有 Release tags', example: ['va1b2c3d4e5f60', 'va1b2c3d4e5f61', 'va1b2c3d4e5f62'] },
-    releaseUrl: { type: 'string', description: 'Release 页面 URL', example: 'https://github.com/user/content/releases/tag/va1b2c3d4e5f60' },
-  },
-}
-
 async function getIndex(env: Env): Promise<BookEntry[]> {
   if (indexCache && Date.now() - indexCache.ts < INDEX_TTL) return indexCache.books
   const { CONTENT_OWNER, CONTENT_REPO, GH_PAT } = env
@@ -89,22 +79,35 @@ export function register(router: Router) {
     },
   })
 
-  // ── 详情 ──
+  // ── 详情 / 发布检查 ──
 
   router.get('/api/books/:hash', async (_req, env, _ctx, params) => {
     const hash = params.hash
     if (!HASH_REGEX.test(hash)) return err('INVALID_REQUEST', null, 400)
+    const { CONTENT_OWNER, CONTENT_REPO, GH_PAT } = env
+    if (!CONTENT_OWNER || !CONTENT_REPO || !GH_PAT) return err('GITHUB_ERROR', null, 500)
+
     const books = await getIndex(env)
     const book = books.find(b => b.h === hash)
-    if (!book) return err('NOT_FOUND', null, 404)
-    return json(book)
+    if (book) {
+      const tags = await listReleaseTags(CONTENT_OWNER, CONTENT_REPO, hash, GH_PAT)
+      const tag0 = `v${hash}0`
+      const release = await checkReleaseExists(CONTENT_OWNER, CONTENT_REPO, tag0, GH_PAT)
+      return json({ ...book, tags, releaseUrl: release?.htmlUrl ?? '' })
+    }
+
+    const tag0 = `v${hash}0`
+    const release = await checkReleaseExists(CONTENT_OWNER, CONTENT_REPO, tag0, GH_PAT)
+    if (!release) return json({ exists: false })
+    const tags = await listReleaseTags(CONTENT_OWNER, CONTENT_REPO, hash, GH_PAT)
+    return json({ exists: true, guri: `urn:novel:sha256:${hash}`, tags, releaseUrl: release.htmlUrl })
   }, {
-    summary: '获取书籍详情',
+    summary: '获取书籍详情/检查发布状态',
+    description: '从索引中查找书籍，若未收录则检查 Release 是否存在。',
     tags: ['Books'],
     params: HASH_PARAM,
     responses: {
-      '200': { description: '书籍元数据', content: { schema: BookEntrySchema } },
-      '404': { description: '未找到' },
+      '200': { description: '书籍元数据（含 tags/releaseUrl）或 { exists: false }', content: { schema: { type: 'object' } } },
     },
   })
 
@@ -213,28 +216,6 @@ export function register(router: Router) {
           },
         },
       },
-    },
-  })
-
-  // ── 发布检查 ──
-
-  router.get('/api/novel/:hash', async (_req, env, _ctx, params) => {
-    const hash = params.hash
-    if (!HASH_REGEX.test(hash)) return err('INVALID_REQUEST', null, 400)
-    const { CONTENT_OWNER, CONTENT_REPO, GH_PAT } = env
-    if (!CONTENT_OWNER || !CONTENT_REPO || !GH_PAT) return err('GITHUB_ERROR', null, 500)
-    const tag = `v${hash}0`
-    const release = await checkReleaseExists(CONTENT_OWNER, CONTENT_REPO, tag, GH_PAT)
-    if (!release) return json({ exists: false })
-    const tags = await listReleaseTags(CONTENT_OWNER, CONTENT_REPO, hash, GH_PAT)
-    return json({ exists: true, guri: `urn:novel:sha256:${hash}`, tags, releaseUrl: release.htmlUrl })
-  }, {
-    summary: '检查书籍是否已发布',
-    description: '通过 hash 查询书籍是否已在 Content Repo 中生成 Release。',
-    tags: ['Books'],
-    params: HASH_PARAM,
-    responses: {
-      '200': { description: 'exists=true 时包含 guri/tags/releaseUrl', content: { schema: NovelCheckSchema } },
     },
   })
 }

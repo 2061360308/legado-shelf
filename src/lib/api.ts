@@ -38,7 +38,7 @@ export function deleteFromQueue(key: string) {
   return request(`/api/queue/${encodeURIComponent(key)}`, { method: "DELETE" });
 }
 export function checkNovel(hash: string) {
-  return request(`/api/novel/${hash}`);
+  return request(`/api/books/${hash}`);
 }
 export function triggerAction() {
   return request("/api/trigger", { method: "POST" });

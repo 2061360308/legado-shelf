@@ -1,0 +1,42 @@
+name: Process Novel Uploads
+
+on:
+  workflow_dispatch:
+    inputs:
+      r2_endpoint:
+        required: true
+        type: string
+      r2_access_key_id:
+        required: true
+        type: string
+      r2_secret_access_key:
+        required: true
+        type: string
+      r2_bucket_name:
+        required: true
+        type: string
+
+concurrency:
+  group: process-novels
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Process Uploads
+        run: node scripts/process-uploads.bundle.mjs
+        env:
+          R2_ENDPOINT: ${{ inputs.r2_endpoint }}
+          R2_ACCESS_KEY_ID: ${{ inputs.r2_access_key_id }}
+          R2_SECRET_ACCESS_KEY: ${{ inputs.r2_secret_access_key }}
+          R2_BUCKET_NAME: ${{ inputs.r2_bucket_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

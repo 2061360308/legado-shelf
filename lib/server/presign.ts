@@ -1,5 +1,5 @@
 import { AwsClient } from 'aws4fetch';
-import { MAX_UPLOAD_SIZE, PRESIGN_EXPIRES } from '../shared/constants';
+import { PRESIGN_EXPIRES } from '../shared/constants';
 
 export function createR2Client(env: { R2_ENDPOINT: string; R2_ACCESS_KEY_ID: string; R2_SECRET_ACCESS_KEY: string }) {
   return new AwsClient({

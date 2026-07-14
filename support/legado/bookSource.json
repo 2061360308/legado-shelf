@@ -1,0 +1,45 @@
+{
+  "bookSourceName": "Legado 书架",
+  "bookSourceType": 0,
+  "bookSourceUrl": "https://legado-shelf.2061360308.workers.dev",
+  "bookSourceGroup": "自建",
+  "header": "{\"Authorization\": \"Bearer A020218z\"}",
+  "enabled": true,
+  "enabledExplore": true,
+  "exploreUrl": "我的书架::/api/books",
+
+  "ruleSearch": {
+    "bookList": "$.books[*]",
+    "name": "$.t",
+    "author": "$.a",
+    "coverUrl": "/api/books/{{$.h}}/cover",
+    "bookUrl": "/api/books/{{$.h}}"
+  },
+  "searchUrl": "/api/books?q={{key}}",
+
+  "ruleExplore": {
+    "bookList": "$.books[*]",
+    "name": "$.t",
+    "author": "$.a",
+    "coverUrl": "/api/books/{{$.h}}/cover",
+    "bookUrl": "/api/books/{{$.h}}"
+  },
+
+  "ruleBookInfo": {
+    "name": "$.t",
+    "author": "$.a",
+    "coverUrl": "/api/books/{{$.h}}/cover",
+    "tocUrl": "/api/books/{{$.h}}/toc"
+  },
+
+  "ruleToc": {
+    "chapterList": "$[*]",
+    "chapterName": "$.t",
+    "chapterUrl": "k"
+  },
+
+  "ruleContent": {
+    "content": "<js>JSON.parse(result).content</js>"
+  },
+  "contentUrl": "<js>'https://legado-shelf.2061360308.workers.dev/api/books/cb133eb12842/chapters/'+chapterUrl</js>"
+}

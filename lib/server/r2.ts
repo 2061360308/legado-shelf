@@ -15,12 +15,12 @@ export function hashFromKey(key: string): string {
 }
 
 export async function fileExists(key: string, env: Env): Promise<boolean> {
-  const obj = await env.NOVEL_R2.head(key);
+  const obj = await env.LEGADO_SHELF_R2.head(key);
   return obj !== null;
 }
 
 export async function listFiles(env: Env): Promise<QueuedFile[]> {
-  const listed = await env.NOVEL_R2.list({ prefix: UPLOAD_PREFIX });
+  const listed = await env.LEGADO_SHELF_R2.list({ prefix: UPLOAD_PREFIX });
   return listed.objects.map(obj => ({
     key: obj.key,
     size: obj.size,
@@ -29,5 +29,5 @@ export async function listFiles(env: Env): Promise<QueuedFile[]> {
 }
 
 export async function deleteFile(key: string, env: Env): Promise<void> {
-  await env.NOVEL_R2.delete(key);
+  await env.LEGADO_SHELF_R2.delete(key);
 }

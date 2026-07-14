@@ -4,87 +4,12 @@ function client(token: string) {
   return new Octokit({ auth: token, request: { fetch } })
 }
 
-const WORKFLOW_YML = `\
-name: Process Novel Uploads
-
-on:
-  workflow_dispatch:
-    inputs:
-      hash:
-        description: 'Specify book hash (leave empty to process all pending)'
-        required: false
-        type: string
-
-concurrency:
-  group: process-novels
-  cancel-in-progress: false
-
-jobs:
-  process:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: __CODE_REPO__
-          path: code
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm ci
-        working-directory: code
-      - name: Process Uploads
-        run: node code/scripts/process-uploads.mjs
-        env:
-          R2_ENDPOINT: \${{ secrets.R2_ENDPOINT }}
-          R2_ACCESS_KEY_ID: \${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: \${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET_NAME: \${{ secrets.R2_BUCKET_NAME }}
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-          INPUT_HASH: \${{ inputs.hash }}
-`
-
-async function ensureWorkflow(
-  octo: Octokit,
-  codeOwner: string, codeRepo: string,
-  contentOwner: string, contentRepo: string,
-) {
-  const yml = WORKFLOW_YML.replace('__CODE_REPO__', `${codeOwner}/${codeRepo}`)
-  const content = btoa(yml)
-  let sha: string | undefined
-  try {
-    const { data } = await octo.rest.repos.getContent({
-      owner: contentOwner, repo: contentRepo, path: '.github/workflows/main.yml',
-    })
-    sha = (data as any).sha
-  } catch (e: any) {
-    if (e.status !== 404) {
-      console.error('ensureWorkflow getContent error:', e.status, e.message)
-      return
-    }
-  }
-  try {
-    console.log('📝 自动' + (sha ? '更新' : '创建') + ' workflow 到内容仓库...')
-    await octo.rest.repos.createOrUpdateFileContents({
-      owner: contentOwner, repo: contentRepo,
-      path: '.github/workflows/main.yml',
-      message: '📝 初始化 novel 处理 workflow',
-      content,
-      ...(sha ? { sha } : {}),
-    })
-    console.log('✅ workflow ' + (sha ? '更新' : '创建') + '成功')
-  } catch (e: any) {
-    console.error('ensureWorkflow failed:', e.status, e.message)
-  }
-}
-
-/* ── 代码仓库 (触发 Action) ────────────────── */
+/* ── 触发 Action ───────────────────────────── */
 
 export async function isActionRunning(env: {
-  CONTENT_OWNER: string; CONTENT_REPO: string; GITHUB_TOKEN: string
+  CONTENT_OWNER: string; CONTENT_REPO: string; GH_PAT: string
 }): Promise<boolean> {
-  const octo = client(env.GITHUB_TOKEN)
+  const octo = client(env.GH_PAT)
   try {
     const { data } = await octo.rest.actions.listWorkflowRuns({
       owner: env.CONTENT_OWNER,
@@ -99,40 +24,32 @@ export async function isActionRunning(env: {
   }
 }
 
+export interface R2Input {
+  R2_ENDPOINT: string
+  R2_ACCESS_KEY_ID: string
+  R2_SECRET_ACCESS_KEY: string
+  R2_BUCKET_NAME: string
+}
+
 export async function triggerWorkflow(
-  owner: string, repo: string, hash: string, token: string,
-  codeOwner: string, codeRepo: string,
+  owner: string, repo: string, token: string, r2: R2Input,
 ): Promise<boolean> {
   const octo = client(token)
   try {
-    const inputs: Record<string, string> = {}
-    if (hash) inputs.hash = hash
     await octo.rest.actions.createWorkflowDispatch({
       owner, repo,
       workflow_id: 'main.yml',
       ref: 'main',
-      inputs,
+      inputs: {
+        r2_endpoint: r2.R2_ENDPOINT,
+        r2_access_key_id: r2.R2_ACCESS_KEY_ID,
+        r2_secret_access_key: r2.R2_SECRET_ACCESS_KEY,
+        r2_bucket_name: r2.R2_BUCKET_NAME,
+      },
     })
     return true
   } catch (e: any) {
-    if (e.status === 404 || e.status === 422) {
-      await ensureWorkflow(octo, codeOwner, codeRepo, owner, repo)
-      try {
-        const inputs: Record<string, string> = {}
-        if (hash) inputs.hash = hash
-        await octo.rest.actions.createWorkflowDispatch({
-          owner, repo,
-          workflow_id: 'main.yml',
-          ref: 'main',
-          inputs,
-        })
-        return true
-      } catch (e2: any) {
-        console.error('triggerWorkflow retry failed:', e2.status, e2.message)
-      }
-    } else {
-      console.error('triggerWorkflow failed:', e.status, e.message)
-    }
+    console.error('triggerWorkflow failed:', e.status, e.message)
     return false
   }
 }

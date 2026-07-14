@@ -11,7 +11,6 @@ const R2_BUCKET       = required('R2_BUCKET_NAME')
 const GITHUB_TOKEN    = required('GITHUB_TOKEN')
 const GH_REPO         = process.env.GITHUB_REPOSITORY || ''
 const [GH_OWNER = '', GH_NAME = ''] = GH_REPO.split('/')
-const INPUT_HASH      = process.env.INPUT_HASH || ''
 const UPLOAD_PREFIX   = 'uploads/'
 const INDEX_PATH      = 'index.json'
 
@@ -223,17 +222,10 @@ async function main() {
   const keys = await listUploads()
   console.log(`  ${keys.length} 个 ZIP`)
 
-  let targets = keys
-  if (INPUT_HASH) {
-    targets = keys.filter(k => k.includes(INPUT_HASH))
-    if (targets.length === 0) { console.log(`❌ 未找到 hash=${INPUT_HASH}`); process.exit(1) }
-    console.log(`🎯 指定: ${targets[0]}`)
-  }
-
   const results = []
   let ok = 0, skip = 0, fail = 0
 
-  for (const key of targets) {
+  for (const key of keys) {
     try {
       const r = await processZip(key)
       if (r) { results.push(r); ok++ }

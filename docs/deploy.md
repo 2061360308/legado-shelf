@@ -49,9 +49,7 @@
 | 变量 | 来源 | 说明 |
 |------|------|------|
 | `API_KEY` | 自己设定 | 登录密钥，用于 Web 界面和 API 鉴权 |
-| `GITHUB_TOKEN` | 前提准备 2 | 刚创建的 PAT |
-| `GITHUB_OWNER` | 代码仓库 | 2061360308，建议克隆仓库，克隆后填写自己名字 |
-| `GITHUB_REPO` | 代码仓库 | legado-shelf，克隆后填写克隆仓库的真实名字 |
+| `GH_PAT` | 前提准备 2 | 刚创建的 PAT |
 | `CONTENT_OWNER` | 前提准备 1 | 内容仓库的 owner |
 | `CONTENT_REPO` | 前提准备 1 | 内容仓库名 |
 | `R2_ENDPOINT` | 前提准备 4 | R2 端点地址 |

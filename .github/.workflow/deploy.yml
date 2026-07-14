@@ -1,0 +1,172 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate required variables
+        env:
+          CONTENT_OWNER: ${{ vars.CONTENT_OWNER }}
+          CONTENT_REPO: ${{ vars.CONTENT_REPO }}
+          API_KEY: ${{ secrets.API_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          set -e
+          missing_vars=()
+          if [ -z "$CONTENT_OWNER" ]; then missing_vars+=("CONTENT_OWNER"); fi
+          if [ -z "$CONTENT_REPO" ]; then missing_vars+=("CONTENT_REPO"); fi
+          if [ -z "$API_KEY" ]; then missing_vars+=("API_KEY"); fi
+          if [ -z "$GH_PAT" ]; then missing_vars+=("GH_PAT"); fi
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then missing_vars+=("CLOUDFLARE_API_TOKEN"); fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then missing_vars+=("CLOUDFLARE_ACCOUNT_ID"); fi
+          if [ -z "$R2_ACCESS_KEY_ID" ]; then missing_vars+=("R2_ACCESS_KEY_ID"); fi
+          if [ -z "$R2_SECRET_ACCESS_KEY" ]; then missing_vars+=("R2_SECRET_ACCESS_KEY"); fi
+          if [ -z "$R2_ENDPOINT" ]; then missing_vars+=("R2_ENDPOINT"); fi
+          if [ ${#missing_vars[@]} -ne 0 ]; then
+            echo "❌ Error: The following required variables are not set:"
+            printf "  - %s\n" "${missing_vars[@]}"
+            echo "Please set them in GitHub Secrets/Variables and retry."
+            exit 1
+          fi
+          echo "✅ All required variables are set."
+
+      - name: Build
+        run: npm install && npm run build
+
+      - name: Read R2 bucket name from config
+        id: config-read
+        run: |
+          BUCKET_NAME=$(jq -r '.r2_buckets[0].bucket_name // .r2_buckets[0].binding' wrangler.jsonc)
+          if [ -z "$BUCKET_NAME" ] || [ "$BUCKET_NAME" = "null" ]; then
+            echo "❌ No R2 bucket binding found in wrangler.jsonc"
+            exit 1
+          fi
+          echo "R2_BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+          echo "✅ R2 bucket name: $BUCKET_NAME"
+
+      - name: Bundle process script
+        run: npx esbuild support/content_repo_workflow/process-uploads.mjs --bundle --platform=node --format=esm --outfile=support/content_repo_workflow/process-uploads.bundle.mjs
+
+      - name: Push workflow and script to content repo
+        env:
+          CONTENT_OWNER: ${{ vars.CONTENT_OWNER }}
+          CONTENT_REPO: ${{ vars.CONTENT_REPO }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          set -e
+          if [ -z "$CONTENT_OWNER" ] || [ -z "$CONTENT_REPO" ]; then
+            echo "ℹ️ CONTENT_OWNER or CONTENT_REPO not set, skipping content repo push"
+            exit 0
+          fi
+          git clone --depth=1 "https://x-access-token:${GH_PAT}@github.com/${CONTENT_OWNER}/${CONTENT_REPO}.git" _content_repo
+          mkdir -p _content_repo/.github/workflows _content_repo/scripts
+          cp support/content_repo_workflow/main.yml _content_repo/.github/workflows/main.yml
+          cp support/content_repo_workflow/process-uploads.bundle.mjs _content_repo/scripts/process-uploads.bundle.mjs
+          cd _content_repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "✅ Content repo already up to date"
+          else
+            git commit -m "📝 Update workflow and bundled processing script [skip ci]"
+            git push
+            echo "✅ Pushed workflow and bundled script to content repo"
+          fi
+
+      - name: Deploy Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          vars: |
+            CONTENT_OWNER
+            CONTENT_REPO
+            CACHE_TTL
+            MAX_UPLOAD_SIZE
+            R2_BUCKET_NAME
+          secrets: |
+            API_KEY
+            GH_PAT
+            R2_ACCESS_KEY_ID
+            R2_SECRET_ACCESS_KEY
+            R2_ENDPOINT
+        env:
+          CONTENT_OWNER: ${{ vars.CONTENT_OWNER }}
+          CONTENT_REPO: ${{ vars.CONTENT_REPO }}
+          CACHE_TTL: ${{ vars.CACHE_TTL || '15' }}
+          MAX_UPLOAD_SIZE: ${{ vars.MAX_UPLOAD_SIZE || '52428800' }}
+          API_KEY: ${{ secrets.API_KEY }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET_NAME: ${{ env.R2_BUCKET_NAME }}
+
+      - name: Set R2 CORS
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          SITE_URL: ${{ vars.SITE_URL }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ env.R2_BUCKET_NAME }}
+        run: |
+          set -e
+          BASE_JSON='[{"AllowedOrigins":["http://localhost:5173","http://127.0.0.1:5173"]}]'
+
+          if [ -n "$DEPLOYMENT_URL" ]; then
+            BASE_JSON=$(echo "$BASE_JSON" | jq --arg url "$DEPLOYMENT_URL" '.[0].AllowedOrigins += [$url]')
+            echo "✅ Deployment URL ($DEPLOYMENT_URL) added."
+          else
+            echo "⚠️ DEPLOYMENT_URL is empty, skipping."
+          fi
+
+          if [ -n "$SITE_URL" ]; then
+            if [ "$SITE_URL" != "$DEPLOYMENT_URL" ]; then
+              BASE_JSON=$(echo "$BASE_JSON" | jq --arg url "$SITE_URL" '.[0].AllowedOrigins += [$url]')
+              echo "✅ SITE_URL ($SITE_URL) added."
+            else
+              echo "ℹ️ SITE_URL equals DEPLOYMENT_URL, skipping duplicate."
+            fi
+          else
+            echo "ℹ️ SITE_URL not set, skipping."
+          fi
+
+          FINAL_JSON=$(echo "$BASE_JSON" | jq '.[0].AllowedMethods = ["PUT"] | .[0].AllowedHeaders = ["Content-Type","Content-Length"] | .[0].ExposeHeaders = ["ETag"] | .[0].MaxAgeSeconds = 86400')
+          echo "$FINAL_JSON" > cors.json
+
+          npx wrangler r2 bucket cors set "$R2_BUCKET_NAME" --file cors.json
+
+      - name: Print deployment info
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          echo "🚀 Deployment successful!"
+          echo "📌 Default preview URL: $DEPLOYMENT_URL"
+          if [ -n "$SITE_URL" ]; then
+            echo "✅ Custom domain (SITE_URL) is configured: $SITE_URL"
+            echo "   CORS has been updated to allow both preview URL and custom domain."
+          else
+            echo "⚠️ No custom domain (SITE_URL) set. If you bind a custom domain later,"
+            echo "   please set the GitHub variable 'SITE_URL' and re-run the workflow to update CORS."
+          fi

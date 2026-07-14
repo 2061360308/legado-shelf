@@ -1,8 +1,5 @@
 API_KEY=设置你的登录密钥
-GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
-GITHUB_OWNER=你的GitHub用户名
-GITHUB_REPO=代码仓库名
-GITHUB_WORKFLOW_ID=main.yml
+GH_PAT=ghp_xxxxxxxxxxxxxxxxxxxx
 CONTENT_OWNER=你的GitHub用户名
 CONTENT_REPO=内容仓库名
 R2_ENDPOINT=https://xxxxx.r2.cloudflarestorage.com
@@ -10,4 +7,4 @@ R2_ACCESS_KEY_ID=xxxxxxxxxxxxxxxxxxxx
 R2_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxx
 R2_BUCKET_NAME=你的R2桶名
 CACHE_TTL=15
-MAX_UPLOAD_SIZE=524288000
+MAX_UPLOAD_SIZE=52428800

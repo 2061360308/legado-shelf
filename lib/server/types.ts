@@ -1,11 +1,8 @@
 export interface Env {
-  NOVEL_R2: R2Bucket;
+  LEGADO_SHELF_R2: R2Bucket;
   ASSETS: Fetcher;
   API_KEY: string;
-  GITHUB_TOKEN: string;
-  GITHUB_OWNER: string;
-  GITHUB_REPO: string;
-  GITHUB_WORKFLOW_ID: string;
+  GH_PAT: string;
   CONTENT_OWNER: string;
   CONTENT_REPO: string;
   R2_ENDPOINT: string;

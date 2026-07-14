@@ -131,29 +131,43 @@ jobs:
           R2_BUCKET_NAME: ${{ env.R2_BUCKET_NAME }}
         run: |
           set -e
+          # 1. 构建 AllowedOrigins 列表
           BASE_JSON='[{"AllowedOrigins":["http://localhost:5173","http://127.0.0.1:5173"]}]'
 
           if [ -n "$DEPLOYMENT_URL" ]; then
-                  BASE_JSON=$(echo "$BASE_JSON" | jq --arg url "$DEPLOYMENT_URL" '.[0].AllowedOrigins += [$url]')
-                  echo "✅ Deployment URL ($DEPLOYMENT_URL) added."
+            BASE_JSON=$(echo "$BASE_JSON" | jq --arg url "$DEPLOYMENT_URL" '.[0].AllowedOrigins += [$url]')
+            echo "✅ Deployment URL ($DEPLOYMENT_URL) added."
           else
-                  echo "⚠️ DEPLOYMENT_URL is empty, skipping."
+            echo "⚠️ DEPLOYMENT_URL is empty, skipping."
           fi
 
           if [ -n "$SITE_URL" ]; then
-                  if [ "$SITE_URL" != "$DEPLOYMENT_URL" ]; then
-                          BASE_JSON=$(echo "$BASE_JSON" | jq --arg url "$SITE_URL" '.[0].AllowedOrigins += [$url]')
-                          echo "✅ SITE_URL ($SITE_URL) added."
-                  else
-                          echo "ℹ️ SITE_URL equals DEPLOYMENT_URL, skipping duplicate."
-                  fi
+            if [ "$SITE_URL" != "$DEPLOYMENT_URL" ]; then
+              BASE_JSON=$(echo "$BASE_JSON" | jq --arg url "$SITE_URL" '.[0].AllowedOrigins += [$url]')
+              echo "✅ SITE_URL ($SITE_URL) added."
+            else
+              echo "ℹ️ SITE_URL equals DEPLOYMENT_URL, skipping duplicate."
+            fi
           else
-                  echo "ℹ️ SITE_URL not set, skipping."
+            echo "ℹ️ SITE_URL not set, skipping."
           fi
 
-          # 关键修改：在最外层添加 "rules" 字段
-          FINAL_JSON=$(echo "$BASE_JSON" | jq '.[0].AllowedMethods = ["PUT"] | .[0].AllowedHeaders = ["Content-Type","Content-Length"] | .[0].ExposeHeaders = ["ETag"] | .[0].MaxAgeSeconds = 86400 | { rules: . }')
+          # 2. 转换为 Cloudflare R2 格式
+          FINAL_JSON=$(echo "$BASE_JSON" | jq '{
+            rules: [
+              {
+                allowed: {
+                  origins: .[0].AllowedOrigins,
+                  methods: ["PUT"],
+                  headers: ["Content-Type", "Content-Length"]
+                },
+                exposeHeaders: ["ETag"],
+                maxAgeSeconds: 86400
+              }
+            ]
+          }')
 
+          # 3. 写入文件并应用
           echo "$FINAL_JSON" > cors.json
           echo "Generated CORS policy:"
           cat cors.json

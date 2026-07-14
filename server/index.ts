@@ -13,7 +13,7 @@ registerUpload(router)
 registerTrigger(router)
 registerBooks(router)
 
-router.get('/openapi.json', () => {
+router.get('/api/openapi.json', () => {
   return json(router.toOpenAPIDoc())
 }, { auth: false, summary: 'OpenAPI 文档', tags: ['Meta'] })
 
@@ -21,6 +21,6 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const res = await router.fetch(request, env, ctx)
     if (res) return res
-    return env.ASSETS.fetch(request)
+    return env.ASSETS?.fetch(request) ?? new Response('Not Found', { status: 404 })
   },
 } satisfies ExportedHandler<Env>

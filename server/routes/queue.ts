@@ -7,7 +7,7 @@ import type { Router } from '../lib/router'
 const QueueFileSchema = {
   type: 'object' as const,
   properties: {
-    key: { type: 'string', description: '文件 key', example: 'uploads/abc123_title.zip' },
+    key: { type: 'string', description: '文件 key', example: 'uploads/a1b2c3d4e5f6_三体.zip' },
     size: { type: 'integer', description: '文件大小 (bytes)' },
     uploaded: { type: 'string', format: 'date-time', description: '上传时间' },
   },

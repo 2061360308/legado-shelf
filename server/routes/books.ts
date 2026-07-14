@@ -9,7 +9,7 @@ interface BookEntry { h: string; t: string; a: string; c: number; p: number; d: 
 let indexCache: { books: BookEntry[]; ts: number } | null = null
 const INDEX_TTL = 60_000
 const ASSET_TTL = 86400
-const HASH_PARAM = { hash: { type: 'string' as const, description: '书籍 hash', pattern: '^[a-f0-9]{12,64}$', example: 'a1b2c3d4e5f6' } }
+const HASH_PARAM = { hash: { type: 'string' as const, description: '书籍 hash（12位hex）', pattern: '^[a-f0-9]{12}$', example: 'a1b2c3d4e5f6' } }
 
 const BookEntrySchema = {
   type: 'object' as const,
@@ -19,8 +19,8 @@ const BookEntrySchema = {
     a: { type: 'string', description: '作者', example: '刘慈欣' },
     c: { type: 'integer', description: '章节数', example: 100 },
     p: { type: 'integer', description: '分片数', example: 3 },
-    d: { type: 'string', format: 'date-time', description: '创建时间' },
-    tag: { type: 'string', description: '首 Release tag', example: 'vabc1230' },
+    d: { type: 'string', format: 'date-time', description: '创建时间', example: '2026-07-14T17:55:22Z' },
+    tag: { type: 'string', description: '首 Release tag', example: 'va1b2c3d4e5f60' },
   },
 }
 
@@ -28,9 +28,9 @@ const NovelCheckSchema = {
   type: 'object' as const,
   properties: {
     exists: { type: 'boolean', description: '是否已发布' },
-    guri: { type: 'string', description: 'URN', example: 'urn:novel:sha256:abc123' },
-    tags: { type: 'array', items: { type: 'string' }, description: '所有 Release tags', example: ['vabc1230', 'vabc1231'] },
-    releaseUrl: { type: 'string', description: 'Release 页面 URL' },
+    guri: { type: 'string', description: 'URN', example: 'urn:novel:sha256:a1b2c3d4e5f6' },
+    tags: { type: 'array', items: { type: 'string' }, description: '所有 Release tags', example: ['va1b2c3d4e5f60', 'va1b2c3d4e5f61', 'va1b2c3d4e5f62'] },
+    releaseUrl: { type: 'string', description: 'Release 页面 URL', example: 'https://github.com/user/content/releases/tag/va1b2c3d4e5f60' },
   },
 }
 
@@ -201,7 +201,7 @@ export function register(router: Router) {
     tags: ['Books'],
     params: {
       hash: { ...HASH_PARAM.hash },
-      key: { type: 'string', description: '章节 key', example: '0123456789ab', minLength: 12 },
+      key: { type: 'string', description: '章节 key（见目录接口 k 字段）', example: '0b1c2d3e4f5a', minLength: 13 },
     },
     responses: {
       '200': {

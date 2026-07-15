@@ -14,13 +14,13 @@ const HASH_PARAM = { hash: { type: 'string' as const, description: '书籍 hash�
 const BookEntrySchema = {
   type: 'object' as const,
   properties: {
-    h: { type: 'string', description: '书籍内容 hash', example: 'a1b2c3d4e5f6' },
+    h: { type: 'string', description: '书籍 hash', example: 'a1b2c3d4e5f6' },
     t: { type: 'string', description: '书名', example: '三体' },
     a: { type: 'string', description: '作者', example: '刘慈欣' },
     c: { type: 'integer', description: '总章节数', example: 100 },
-    p: { type: 'integer', description: 'Release 分片数', example: 3 },
+    p: { type: 'integer', description: '分片数', example: 3 },
     d: { type: 'string', format: 'date-time', description: '创建时间', example: '2026-07-14T17:55:22Z' },
-    tag: { type: 'string', description: '首 Release tag', example: 'va1b2c3d4e5f60' },
+    i: { type: 'integer', description: '有无封面（0/1）', example: 1 },
   },
 }
 
@@ -35,6 +35,20 @@ const BookDetailSchema = {
     d: { type: 'string', format: 'date-time', description: '创建时间', example: '2026-07-14T17:55:22Z' },
     i: { type: 'integer', description: '有无封面（0/1）', example: 1 },
     releaseUrl: { type: 'string', description: 'Release 页面 URL', example: 'https://github.com/user/content/releases/tag/va1b2c3d4e5f60' },
+  },
+}
+
+const DetailSchema = {
+  type: 'object' as const,
+  properties: {
+    t: { type: 'string', description: '书名', example: '三体' },
+    a: { type: 'string', description: '作者', example: '刘慈欣' },
+    desc: { type: 'string', description: '简介', example: '这是一部科幻巨作...' },
+    c: { type: 'integer', description: '总章节数', example: 100 },
+    p: { type: 'integer', description: '分片数', example: 3 },
+    d: { type: 'string', format: 'date-time', description: '创建时间', example: '2026-07-14T17:55:22Z' },
+    i: { type: 'integer', description: '有无封面（0/1）', example: 1 },
+    toc: { type: 'array', description: '完整目录', items: { type: 'object', properties: { k: { type: 'string' }, t: { type: 'string' }, l: { type: 'integer' } } } },
   },
 }
 
@@ -242,7 +256,7 @@ export function register(router: Router) {
     tags: ['Books'],
     params: HASH_PARAM,
     responses: {
-      '200': { description: '书籍全部元数据', content: { schema: { type: 'object' } } },
+      '200': { description: '书籍全部元数据', content: { schema: DetailSchema } },
       '404': { description: '[NOT_FOUND] 未找到' },
     },
   })

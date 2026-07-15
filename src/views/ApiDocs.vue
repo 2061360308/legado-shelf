@@ -36,8 +36,8 @@ async function loadDocs() {
       layout: 'modern' as const,
       authentication: {
         preferredSecurityScheme: 'BearerAuth' as const,
-        http: {
-          bearer: {
+        securitySchemes: {
+          BearerAuth: {
             token: localStorage.getItem('nov_api_key') || '',
           },
         },

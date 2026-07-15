@@ -31,6 +31,10 @@ const { client: r2, hostname } = createR2Client({
 
 const octo = createOctokit(GITHUB_TOKEN)
 
+/* ── 常量 ───────────────────────────────────── */
+const CHAPTERS_PER_PART = 990
+const SHORT_HASH_LEN = 12
+
 /* ── 索引文件 ───────────────────────────────── */
 
 async function readIndex() {
@@ -46,8 +50,6 @@ async function saveIndex(books, sha) {
 
 /* ── ZIP 处理 ───────────────────────────────── */
 
-const SHORT_HASH_LEN = 12
-
 async function processZip(key) {
   const { hash, title } = keyInfo(key)
   const tag0 = `v${hash}0`
@@ -61,30 +63,41 @@ async function processZip(key) {
   const zipBuf = Buffer.from(await downloadObject(r2, hostname, R2_BUCKET, key))
   const zip = await JSZip.loadAsync(zipBuf)
 
-  const meta = JSON.parse(await zip.file('metadata.json').async('string'))
-  const bookTitle = meta.t || title || '未命名'
-  const author = meta.a || '未知'
-  const totalChapters = meta.c || 0
+  const detailRaw = zip.file('detail.json')
+  const detail = detailRaw ? JSON.parse(await detailRaw.async('string')) : null
+  if (!detail) throw new Error('detail.json 缺失')
 
-  const tocRaw = zip.file('toc.json')
-  const toc = tocRaw ? JSON.parse(await tocRaw.async('string')) : []
-  const tocBuf = tocRaw ? await tocRaw.async('nodebuffer') : null
+  const bookTitle = detail.t || title || '未命名'
+  const author = detail.a || '未知'
+  const totalChapters = detail.c || 0
+  const createdAt = detail.d || ''
+  const hasCover = detail.i ?? 0
+  const toc = detail.toc || []
+
+  // 按 TOC 顺序分配 part，重写 k = partIdx + chShort
+  const totalParts = Math.max(1, Math.floor((toc.length - 1) / CHAPTERS_PER_PART) + 1)
+  const parts = new Map()
+  for (let i = 0; i < toc.length; i++) {
+    const e = toc[i]
+    const partIdx = Math.floor(i / CHAPTERS_PER_PART)
+    const chShort = e.k // packer 存的即是短 hash
+    const newKey = `${partIdx}${chShort}`
+    e.k = newKey
+    if (!parts.has(partIdx)) parts.set(partIdx, [])
+    parts.get(partIdx).push({ ...e, chShort })
+  }
+
+  // 更新 detail.json 并重新序列化
+  detail.p = totalParts
+  detail.toc = toc
+  const detailBuf = Buffer.from(JSON.stringify(detail), 'utf-8')
 
   const coverBuf = zip.file('cover.jpg') ? await zip.file('cover.jpg').async('nodebuffer') : null
 
-  const parts = new Map()
-  for (const e of toc) {
-    const k = e.k
-    const chHash = k.substring(k.length - SHORT_HASH_LEN)
-    const p = parseInt(k.substring(0, k.length - SHORT_HASH_LEN), 10) || 0
-    if (!parts.has(p)) parts.set(p, [])
-    parts.get(p).push({ ...e, chHash })
-  }
-  const partIndices = [...parts.keys()].sort((a, b) => a - b)
-  if (partIndices.length === 0) partIndices.push(0)
-
   let firstTag = tag0
   const createdTags = []
+
+  const partIndices = [...parts.keys()].sort((a, b) => a - b)
 
   for (const p of partIndices) {
     const tag = `v${hash}${p}`
@@ -103,18 +116,22 @@ async function processZip(key) {
     const entries = parts.get(p) || []
     let count = 0
 
+    if (p === 0 && zipBuf) {
+      await uploadAssets(octo, release.upload_url, [{ name: 'res.zip', data: zipBuf, type: 'application/zip' }])
+      count++
+    }
     if (p === 0 && coverBuf) {
       await uploadAssets(octo, release.upload_url, [{ name: 'cover.jpg', data: coverBuf, type: 'image/jpeg' }])
       count++
     }
-    if (p === 0 && tocBuf) {
-      await uploadAssets(octo, release.upload_url, [{ name: 'toc.json', data: tocBuf, type: 'application/json' }])
+    if (p === 0 && detailBuf) {
+      await uploadAssets(octo, release.upload_url, [{ name: 'detail.json', data: detailBuf, type: 'application/json' }])
       count++
     }
 
     const chapterAssets = []
     for (const e of entries) {
-      const file = zip.file(`chapters/${e.chHash}.txt`) || zip.file(`chapters/${e.chHash}.md`)
+      const file = zip.file(`chapters/${e.chShort}.txt`) || zip.file(`chapters/${e.chShort}.md`)
       if (file) {
         chapterAssets.push({
           name: `${e.k}.txt`,
@@ -131,7 +148,7 @@ async function processZip(key) {
 
   return {
     hash, title: bookTitle, author, chapters: totalChapters,
-    parts: partIndices.length, createdAt: meta.d, tag: firstTag,
+    parts: totalParts, createdAt, tag: firstTag, i: hasCover,
     tags: createdTags,
   }
 }
@@ -165,7 +182,7 @@ async function main() {
       const { books, sha } = await readIndex()
       const map = new Map(books.map(b => [b.h, b]))
       for (const r of results) {
-        map.set(r.hash, { h: r.hash, t: r.title, a: r.author, c: r.chapters, p: r.parts, d: r.createdAt, tag: r.tag })
+        map.set(r.hash, { h: r.hash, t: r.title, a: r.author, c: r.chapters, p: r.parts, d: r.createdAt, tag: r.tag, i: r.i })
       }
       await saveIndex([...map.values()], sha)
       console.log('  ✅ index.json 已更新')

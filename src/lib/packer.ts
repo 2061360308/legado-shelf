@@ -26,14 +26,6 @@ async function convertCoverToJpeg(dataUrl: string): Promise<{ jpeg: ArrayBuffer,
   return { jpeg: buf, hash }
 }
 
-const CHAPTERS_PER_PART = 998
-const ITEMS_PER_PART = 1000
-
-function partIndex(chapterIdx: number): number {
-  if (chapterIdx < CHAPTERS_PER_PART) return 0
-  return 1 + Math.floor((chapterIdx - CHAPTERS_PER_PART) / ITEMS_PER_PART)
-}
-
 export async function packageZip(novel: NovelData): Promise<Blob> {
   const zip = new JSZip()
 
@@ -46,10 +38,12 @@ export async function packageZip(novel: NovelData): Promise<Blob> {
     d: new Date().toISOString(),
   }))
 
+  let hasCover = 0
   if (novel.cover) {
     const c = await convertCoverToJpeg(novel.cover)
     if (c) {
       zip.file('cover.jpg', c.jpeg)
+      hasCover = 1
     }
   }
 
@@ -58,11 +52,18 @@ export async function packageZip(novel: NovelData): Promise<Blob> {
   for (let i = 0; i < novel.chapters.length; i++) {
     const ch = novel.chapters[i]!
     const chShort = short(ch.hash)
-    const key = `${partIndex(i)}${chShort}`
-    toc.push({ k: key, t: ch.title, l: ch.level || 1 })
+    toc.push({ k: chShort, t: ch.title, l: ch.level || 1 })
     cf.file(`${chShort}.txt`, ch.body)
   }
-  zip.file('toc.json', JSON.stringify(toc))
+  zip.file('detail.json', JSON.stringify({
+    t: novel.title,
+    a: novel.author,
+    desc: novel.description,
+    c: novel.chapters.length,
+    d: new Date().toISOString(),
+    i: hasCover,
+    toc,
+  }))
 
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
 }

@@ -132,7 +132,7 @@ onMounted(async () => {
       if (r.exists) {
         uploadMsg.value = { type: 'success', html: `<strong>✓ 上传成功！小说已归档</strong><br><a href="${r.releaseUrl}" target="_blank">查看 Release</a>` }
       } else {
-        uploadMsg.value = { type: 'info', html: '<strong>处理中...</strong><br>文件已接收，稍后刷新查看结果。' }
+        uploadMsg.value = { type: 'info', html: '<strong>上传成功！</strong><br>点击上方「触发处理」按钮开始处理。' }
       }
     } catch { /* */ }
   }

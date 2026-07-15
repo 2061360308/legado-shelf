@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import { requestPresign, confirmUpload, uploadToR2 } from './api'
+import { requestPresign, uploadToR2 } from './api'
 import { sha256Buffer } from './utils'
 import { SHORT_HASH_LEN } from './constants'
 import type { NovelData } from './parser'
@@ -70,7 +70,7 @@ export async function packageZip(novel: NovelData): Promise<Blob> {
 export async function fullUpload(
   novel: NovelData,
   onProgress?: (p: number) => void,
-): Promise<{ hash: string; status: string; message: string }> {
+): Promise<{ hash: string }> {
   const blob = await packageZip(novel)
   const title = sanitizeName(novel.title)
   const presign = await requestPresign(novel.contentHash, blob.size, title)
@@ -78,6 +78,5 @@ export async function fullUpload(
   onProgress?.(0)
   await uploadToR2(presign.url, blob, p => onProgress?.(p))
 
-  const done = await confirmUpload(novel.contentHash, title)
-  return { hash: novel.contentHash, status: done.status, message: done.message }
+  return { hash: novel.contentHash }
 }

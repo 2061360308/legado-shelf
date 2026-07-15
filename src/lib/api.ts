@@ -51,13 +51,6 @@ export function requestPresign(hash: string, size: number, title?: string) {
   });
 }
 
-export function confirmUpload(hash: string, title?: string) {
-  return request("/api/upload/complete", {
-    method: "POST",
-    body: JSON.stringify({ hash, title }),
-  });
-}
-
 export function uploadToR2(
   url: string,
   blob: Blob,

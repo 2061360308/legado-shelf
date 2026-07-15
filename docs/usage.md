@@ -20,13 +20,8 @@
 
 ## API
 
-项目部署后，所有 API 如下，不必局限于以上使用方式，可以自行拓展
+API 文档采用 **OpenAPI** 标准自动生成，并借助 **Scalar** 提供友好的交互式体验。
 
-> 所有 API 需要 `Authorization: Bearer {API_KEY}` 头部。
+> **访问地址**：`https://<你的域名>/docs`（请将 `<你的域名>` 替换为实际部署域名）
 
-| 接口                                 | 说明          |
-| ------------------------------------ | ------------- |
-| `GET /api/books?q=关键词`            | 搜索/列出书籍 |
-| `GET /api/books/:hash/toc`           | 书籍目录      |
-| `GET /api/books/:hash/cover`         | 封面          |
-| `GET /api/books/:hash/chapters/:key` | 章节内容      |
+所有接口的请求参数、响应结构、错误码等信息均可在线查阅，并支持直接发送请求进行测试。

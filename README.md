@@ -14,6 +14,8 @@
 
 [Legado](https://github.com/gedoor/legado)（开源阅读）的云端书架。提供 Web 管理界面，可将本地 EPUB/TXT 上传至 GitHub Release 存储，通过定制书源随时在线阅读。
 
+本项目所有后端 API 均自动生成符合 [OpenAPI](https://swagger.io/specification/) 标准的 JSON 描述文件，并集成 [Scalar](https://scalar.com/) 提供交互式文档界面。部署成功后，可通过以下地址访问：`https://<你的域名>/docs`
+
 ## 为什么用这个
 
 - **零服务器成本** — 部署在 Cloudflare Worker 免费计划内，GitHub Release 无限存储
@@ -27,7 +29,8 @@
 - **拖拽上传** — 支持 EPUB/TXT，自动解析目录结构，封面提取并转 JPEG
 - **分片存储** — 书籍按章节分片存入 GitHub Release，单本百万字无压力
 - **动态处理** — Worker 触发 Content Repo Action，R2 凭证动态注入，无需手动配置密钥
-- **RESTful API** — `GET /api/books` 搜索、`/toc` 目录、`/chapters/:key` 内容、`/cover` 封面
+- **RESTful API** — 提供 `/api/books` 搜索、`/toc` 目录、`/chapters/:key` 内容、`/cover` 封面等接口
+- **交互式 API 文档** — 所有接口自动生成符合 OpenAPI 标准的 JSON 文件，集成 Scalar 提供可视化调试界面，部署后访问 `/docs` 即可使用
 - **全球加速** — Cloudflare 边缘网络，世界任何角落秒级响应
 
 ## 部署 & 使用

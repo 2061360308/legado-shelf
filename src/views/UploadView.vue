@@ -238,7 +238,7 @@ async function startUpload() {
       progressText.value = `上传中 ${Math.round(p * 100)}%`
     })
     uploading.value = false
-    uploadResult.value = `<div class="result-box success"><strong>✓ 上传完成</strong><p>状态: ${r.status === 'processing' ? '处理已开始' : '排队中'}</p><p>哈希: <code>${escapeHtml(r.hash)}</code></p><a href="/?hash=${escapeHtml(r.hash)}" class="btn btn-primary" @click.prevent="router.push({ path: '/', query: { hash: r.hash } })">返回管理页面</a></div>`
+    uploadResult.value = `<div class="result-box success"><strong>✓ 上传完成</strong><p>哈希: <code>${escapeHtml(r.hash)}</code></p><a href="/?hash=${escapeHtml(r.hash)}" class="btn btn-primary" @click.prevent="router.push({ path: '/', query: { hash: r.hash } })">返回管理页面</a></div>`
   } catch (e: any) {
     uploading.value = false
     showError('上传失败: ' + e.message)

@@ -196,6 +196,8 @@ export class Router {
 
       if (meta.auth !== false) {
         operation.security = [{ ApiKeyAuth: [] }]
+      } else {
+        operation.security = []
       }
 
       if (meta.params) {

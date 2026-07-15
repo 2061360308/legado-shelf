@@ -10,8 +10,8 @@ export function register(router: Router) {
     const apiKey = url.searchParams.get('API_KEY') || ''
 
     const content = JSON.stringify(bookSourceTemplate)
-      .replaceAll('https://legado-shelf.2061360308.workers.dev', bookSourceUrl)
-      .replaceAll('Bearer A020218z', `Bearer ${apiKey}`)
+      .replaceAll('{{**SITE_URL**}}', bookSourceUrl)
+      .replaceAll('{{**API_KEY**}}', apiKey)
 
     return new Response(content, {
       headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -23,7 +23,7 @@ export function register(router: Router) {
     tags: ['Legado'],
     query: {
       bookSourceUrl: { type: 'string', description: 'Worker 部署域名', required: true, example: 'https://legado-shelf.yourname.workers.dev' },
-      API_KEY: { type: 'string', description: '你的 API Key', required: true, example: 'A020218z' },
+      API_KEY: { type: 'string', description: '你的 API Key', required: true, example: '123456' },
     },
     responses: { '200': { description: 'Legado 书源 JSON' } },
   })

@@ -1,45 +1,46 @@
 {
-  "bookSourceName": "Legado 书架",
+  "bookSourceGroup": "自定义",
+  "bookSourceName": "Legado Shelf云书架",
   "bookSourceType": 0,
-  "bookSourceUrl": "https://legado-shelf.2061360308.workers.dev",
-  "bookSourceGroup": "自建",
-  "header": "{\"Authorization\": \"Bearer A020218z\"}",
+  "bookSourceUrl": "{{**SITE_URL**}}",
+  "customButton": false,
+  "customOrder": 2,
   "enabled": true,
+  "enabledCookieJar": true,
   "enabledExplore": true,
+  "eventListener": false,
   "exploreUrl": "我的书架::/api/books",
-
-  "ruleSearch": {
-    "bookList": "$.books[*]",
-    "name": "$.t",
-    "author": "$.a",
-    "coverUrl": "/api/books/{{$.h}}/cover",
-    "bookUrl": "/api/books/{{$.h}}"
-  },
-  "searchUrl": "/api/books?q={{key}}",
-
-  "ruleExplore": {
-    "bookList": "$.books[*]",
-    "name": "$.t",
-    "author": "$.a",
-    "coverUrl": "/api/books/{{$.h}}/cover",
-    "bookUrl": "/api/books/{{$.h}}"
-  },
-
+  "header": "{\"Authorization\":\"Bearer {{**API_KEY**}}\",\"Accept\":\"application/json\"}",
+  "lastUpdateTime": 1783962652368,
+  "respondTime": 180000,
   "ruleBookInfo": {
-    "name": "$.t",
     "author": "$.a",
     "coverUrl": "/api/books/{{$.h}}/cover",
+    "name": "$.t",
     "tocUrl": "/api/books/{{$.h}}/toc"
   },
-
-  "ruleToc": {
-    "chapterList": "$[*]",
-    "chapterName": "$.t",
-    "chapterUrl": "k"
-  },
-
   "ruleContent": {
-    "content": "<js>JSON.parse(result).content</js>"
+    "content": "$.content"
   },
-  "contentUrl": "<js>'https://legado-shelf.2061360308.workers.dev/api/books/cb133eb12842/chapters/'+chapterUrl</js>"
+  "ruleExplore": {
+    "author": "$.a",
+    "bookList": "$.books",
+    "bookUrl": "/api/books/{{$.h}}",
+    "coverUrl": "/api/books/{{$.h}}/cover",
+    "name": "$.t"
+  },
+  "ruleSearch": {
+    "author": "$.a",
+    "bookList": "$.books",
+    "bookUrl": "/api/books/{{$.h}}",
+    "coverUrl": "/api/books/{{$.h}}/cover",
+    "name": "$.t"
+  },
+  "ruleToc": {
+    "chapterList": "$",
+    "chapterName": "$.t",
+    "chapterUrl": "chapters/{{$.k}}"
+  },
+  "searchUrl": "/api/books?q={{key}}",
+  "weight": 0
 }
